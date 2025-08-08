@@ -2,10 +2,6 @@ import { FC } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-
-import tulip from "@/assets/tulip.png";
-
-
 type Plant = {
   id: string;
   name: string;
@@ -20,8 +16,6 @@ const USER_SUNFLOWER_URL = "/lovable-uploads/df695081-6b6e-49f6-84af-0f48314f93f
 const PLANTS: Plant[] = [
   { id: "rose", name: "Rose", src: USER_ROSE_URL, alt: "User uploaded rose" },
   { id: "sunflower", name: "Sunflower", src: USER_SUNFLOWER_URL, alt: "User uploaded sunflower icon" },
-  { id: "tulip", name: "Tulip", src: tulip, alt: "Pink tulip with green stem" },
-  { id: "grass", name: "Grass", src: tulip, alt: "Tulip icon representing grass" },
 ];
 
 export const PlantPalette: FC<{ onClear?: () => void }>
