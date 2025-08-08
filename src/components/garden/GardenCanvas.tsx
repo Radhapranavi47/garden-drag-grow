@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "re
 import { Canvas as FabricCanvas, Image as FabricImage } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 export type GardenCanvasHandle = {
   addPlant: (url: string, label?: string, at?: { x: number; y: number }) => void;
   clear: () => void;
@@ -56,7 +57,9 @@ const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
 const objectsById = useRef<Map<string, any>>(new Map());
 const renderedIds = useRef<Set<string>>(new Set());
 const rtChannelRef = useRef<any>(null);
-
+const lastDownRef = useRef<{ id: string; x: number; y: number; angle: number } | null>(null);
+const lastMoveActionRef = useRef<{ id: string; from: { x: number; y: number; angle: number }; to: { x: number; y: number; angle: number } } | null>(null);
+const lastDeletedRef = useRef<any | null>(null);
 
 // Helper to render a DB row onto the canvas
 const addRowToCanvas = async (row: any) => {
@@ -83,7 +86,7 @@ const addRowToCanvas = async (row: any) => {
         cornerStrokeColor: "rgba(0,0,0,0)",
         transparentCorners: true,
       });
-    (img as any).data = { id: row.id, label: row.label };
+    (img as any).data = { id: row.id, label: row.label, url: row.url };
     objectsById.current.set(row.id, img);
     fabricCanvas.add(img);
     fabricCanvas.renderAll();
@@ -107,7 +110,7 @@ const addRowToCanvas = async (row: any) => {
       cornerStrokeColor: "rgba(0,0,0,0)",
       transparentCorners: true,
     });
-    (img as any).data = { id: row.id, label: row.label };
+    (img as any).data = { id: row.id, label: row.label, url: row.url };
     objectsById.current.set(row.id, img);
     fabricCanvas.add(img);
     fabricCanvas.renderAll();
@@ -216,18 +219,59 @@ useEffect(() => {
   };
 }, [fabricCanvas, onAdd, onInitialCounts]);
 
-  // Sync moves/rotations to DB and handle Delete key
+  // Sync moves/rotations to DB, handle Delete key, and provide Undo
   useEffect(() => {
     if (!fabricCanvas) return;
+
+    const onMouseDown = (e: any) => {
+      const obj = (e?.target as any) || (fabricCanvas.getActiveObject() as any);
+      if (obj && obj.data?.id) {
+        lastDownRef.current = {
+          id: obj.data.id,
+          x: obj.left ?? 0,
+          y: obj.top ?? 0,
+          angle: obj.angle || 0,
+        };
+      } else {
+        lastDownRef.current = null;
+      }
+    };
 
     const onModified = (e: any) => {
       const obj = e.target as any;
       if (!obj || !obj.data?.id) return;
       const { left, top, angle } = obj;
+
+      const to = { x: left ?? 0, y: top ?? 0, angle: angle || 0 };
+      const from =
+        lastDownRef.current && lastDownRef.current.id === obj.data.id
+          ? { x: lastDownRef.current.x, y: lastDownRef.current.y, angle: lastDownRef.current.angle }
+          : undefined;
+
       supabase
         .from('garden_items')
-        .update({ x: left, y: top, angle: angle || 0 })
+        .update({ x: to.x, y: to.y, angle: to.angle })
         .eq('id', obj.data.id);
+
+      if (from && (from.x !== to.x || from.y !== to.y || from.angle !== to.angle)) {
+        lastMoveActionRef.current = { id: obj.data.id, from, to };
+        toast("Moved plant", {
+          action: {
+            label: "Undo",
+            onClick: () => {
+              const act = lastMoveActionRef.current;
+              if (!act) return;
+              supabase
+                .from('garden_items')
+                .update({ x: act.from.x, y: act.from.y, angle: act.from.angle })
+                .eq('id', act.id);
+              (obj as any).set({ left: act.from.x, top: act.from.y, angle: act.from.angle });
+              fabricCanvas.renderAll();
+              lastMoveActionRef.current = null;
+            },
+          },
+        });
+      }
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -235,17 +279,51 @@ useEffect(() => {
       const obj = fabricCanvas.getActiveObject() as any;
       if (!obj || !obj.data?.id) return;
       e.preventDefault();
+
+      const row = {
+        id: obj.data.id,
+        label: obj.data.label,
+        url: obj.data.url,
+        x: obj.left ?? 0,
+        y: obj.top ?? 0,
+        angle: obj.angle || 0,
+        scale: 1,
+      };
+      lastDeletedRef.current = row;
+
       // Optimistic removal; realtime will broadcast DELETE
-      supabase.from('garden_items').delete().eq('id', obj.data.id);
+      supabase.from('garden_items').delete().eq('id', row.id);
       fabricCanvas.remove(obj);
-      objectsById.current.delete(obj.data.id);
+      objectsById.current.delete(row.id);
       fabricCanvas.renderAll();
+
+      toast("Plant deleted", {
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            const payload = lastDeletedRef.current;
+            if (!payload) return;
+            const { data, error } = await supabase
+              .from('garden_items')
+              .insert(payload)
+              .select()
+              .single();
+            if (!error && data) {
+              renderedIds.current.add(payload.id);
+              await addRowToCanvas(payload);
+            }
+            lastDeletedRef.current = null;
+          },
+        },
+      });
     };
 
+    fabricCanvas.on('mouse:down', onMouseDown);
     fabricCanvas.on('object:modified', onModified);
     window.addEventListener('keydown', onKeyDown);
 
     return () => {
+      fabricCanvas.off('mouse:down', onMouseDown);
       fabricCanvas.off('object:modified', onModified);
       window.removeEventListener('keydown', onKeyDown);
     };
@@ -329,6 +407,22 @@ supabase
         >
           <canvas ref={canvasRef} className="w-full" />
         </div>
+      </div>
+      <div className="mt-2 flex justify-end">
+        <Button
+          variant="secondary"
+          onClick={() => {
+            if (!fabricCanvas) return;
+            const dataUrl = fabricCanvas.toDataURL();
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'garden.png';
+            link.click();
+          }}
+          aria-label="Export garden as PNG"
+        >
+          Export PNG
+        </Button>
       </div>
       <p className="text-center text-sm text-muted-foreground mt-2">
         Tip: drag plants anywhere. Add as many as you like!

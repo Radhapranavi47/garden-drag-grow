@@ -1,6 +1,17 @@
 import { FC } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Plant = {
   id: string;
@@ -30,7 +41,7 @@ export const PlantPalette: FC<{ onClear?: () => void }>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3">
         {PLANTS.map((plant) => (
-          <div key={plant.id} className="group rounded-md border p-2 bg-card hover-scale" draggable onDragStart={(e) => { e.dataTransfer.setData("application/json", JSON.stringify({ src: plant.src, label: plant.name })); e.dataTransfer.effectAllowed = "copy"; }} title="Drag into the garden canvas">
+          <div key={plant.id} className="group rounded-md border p-2 bg-card hover-scale animate-fade-in" draggable onDragStart={(e) => { e.dataTransfer.setData("application/json", JSON.stringify({ src: plant.src, label: plant.name })); e.dataTransfer.effectAllowed = "copy"; }} title="Drag into the garden canvas">
             <img
               src={plant.src}
               alt={`${plant.alt} icon`}
@@ -42,13 +53,27 @@ export const PlantPalette: FC<{ onClear?: () => void }>
             </div>
           </div>
         ))}
-        {onClear && (
-          <div className="col-span-2 flex justify-end">
-            <Button variant="secondary" onClick={onClear} aria-label="Clear garden">
-              Clear Garden
-            </Button>
-          </div>
-        )}
+          {onClear && (
+            <div className="col-span-2 flex justify-end">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="secondary" aria-label="Clear garden">Clear Garden</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear the garden for everyone?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove all plants from the shared board for all users. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => onClear?.()}>Clear</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
       </CardContent>
     </Card>
   );
