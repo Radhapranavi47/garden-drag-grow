@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "re
 import { Canvas as FabricCanvas, Image as FabricImage } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 export type GardenCanvasHandle = {
   addPlant: (url: string, label?: string, at?: { x: number; y: number }) => void;
   clear: () => void;
@@ -51,11 +53,14 @@ const GardenCanvas = forwardRef<GardenCanvasHandle, GardenCanvasProps>(function 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
+const [selected, setSelected] = useState<{ id: string; label?: string } | null>(null);
+const [overlayPos, setOverlayPos] = useState<{ x: number; y: number } | null>(null);
 
 // Track objects and realtime channel
 const objectsById = useRef<Map<string, any>>(new Map());
 const renderedIds = useRef<Set<string>>(new Set());
 const rtChannelRef = useRef<any>(null);
+
 
 // Helper to render a DB row onto the canvas
 const addRowToCanvas = async (row: any) => {
@@ -65,18 +70,23 @@ const addRowToCanvas = async (row: any) => {
     const dataUrl = await removeWhiteBackground(row.url);
     const img = await FabricImage.fromURL(dataUrl);
     if (!img) return;
-    (img as any).set({
-      left: row.x,
-      top: row.y,
-      originX: "center",
-      originY: "center",
-      selectable: true,
-      hasControls: true,
-      lockScalingX: true,
-      lockScalingY: true,
-      lockRotation: false,
-      hoverCursor: "move",
-    });
+      (img as any).set({
+        left: row.x,
+        top: row.y,
+        originX: "center",
+        originY: "center",
+        selectable: true,
+        hasControls: false,
+        hasBorders: false,
+        lockScalingX: true,
+        lockScalingY: true,
+        lockRotation: false,
+        hoverCursor: "move",
+        borderColor: "rgba(0,0,0,0)",
+        cornerColor: "rgba(0,0,0,0)",
+        cornerStrokeColor: "rgba(0,0,0,0)",
+        transparentCorners: true,
+      });
     (img as any).data = { id: row.id, label: row.label };
     objectsById.current.set(row.id, img);
     fabricCanvas.add(img);
@@ -90,11 +100,16 @@ const addRowToCanvas = async (row: any) => {
       originX: "center",
       originY: "center",
       selectable: true,
-      hasControls: true,
+      hasControls: false,
+      hasBorders: false,
       lockScalingX: true,
       lockScalingY: true,
       lockRotation: false,
       hoverCursor: "move",
+      borderColor: "rgba(0,0,0,0)",
+      cornerColor: "rgba(0,0,0,0)",
+      cornerStrokeColor: "rgba(0,0,0,0)",
+      transparentCorners: true,
     });
     (img as any).data = { id: row.id, label: row.label };
     objectsById.current.set(row.id, img);
@@ -114,6 +129,9 @@ const addRowToCanvas = async (row: any) => {
       selection: false,
       preserveObjectStacking: true,
     });
+
+    canvas.selectionColor = "rgba(0,0,0,0)";
+    canvas.selectionBorderColor = "rgba(0,0,0,0)";
 
     setFabricCanvas(canvas);
     toast("Garden ready! Pick a plant and start placing it.");
@@ -216,6 +234,35 @@ useEffect(() => {
         .eq('id', obj.data.id);
     };
 
+    const updateOverlayFor = (obj: any) => {
+      if (!obj) return;
+      const left = obj.left ?? 0;
+      const top = obj.top ?? 0;
+      const w = typeof obj.getScaledWidth === 'function' ? obj.getScaledWidth() : (obj.width || 0);
+      const h = typeof obj.getScaledHeight === 'function' ? obj.getScaledHeight() : (obj.height || 0);
+      setOverlayPos({ x: left + w / 2 + 6, y: top - h / 2 - 6 });
+    };
+
+    const onSelectionChange = () => {
+      const obj = fabricCanvas.getActiveObject() as any;
+      if (obj && obj.data?.id) {
+        setSelected({ id: obj.data.id, label: obj.data.label });
+        updateOverlayFor(obj);
+      }
+    };
+
+    const onSelectionCleared = () => {
+      setSelected(null);
+      setOverlayPos(null);
+    };
+
+    const onObjectMoving = (e: any) => {
+      const obj = e.target as any;
+      if (obj && selected?.id === obj.data?.id) {
+        updateOverlayFor(obj);
+      }
+    };
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Delete' && e.key !== 'Backspace') return;
       const obj = fabricCanvas.getActiveObject() as any;
@@ -226,16 +273,28 @@ useEffect(() => {
       fabricCanvas.remove(obj);
       objectsById.current.delete(obj.data.id);
       fabricCanvas.renderAll();
+      setSelected(null);
+      setOverlayPos(null);
     };
 
     fabricCanvas.on('object:modified', onModified);
+    fabricCanvas.on('selection:created', onSelectionChange);
+    fabricCanvas.on('selection:updated', onSelectionChange);
+    fabricCanvas.on('selection:cleared', onSelectionCleared);
+    fabricCanvas.on('object:moving', onObjectMoving);
+    fabricCanvas.on('object:rotating', onObjectMoving);
     window.addEventListener('keydown', onKeyDown);
 
     return () => {
       fabricCanvas.off('object:modified', onModified);
+      fabricCanvas.off('selection:created', onSelectionChange);
+      fabricCanvas.off('selection:updated', onSelectionChange);
+      fabricCanvas.off('selection:cleared', onSelectionCleared);
+      fabricCanvas.off('object:moving', onObjectMoving);
+      fabricCanvas.off('object:rotating', onObjectMoving);
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [fabricCanvas]);
+  }, [fabricCanvas, selected?.id]);
 
   // Expose imperative methods
   useImperativeHandle(ref, () => ({
@@ -282,7 +341,7 @@ clear: () => {
       <div className="hero-gradient rounded-md p-3">
         <div
           ref={containerRef}
-          className="rounded-md border bg-background/80 backdrop-blur-sm p-2"
+          className="relative rounded-md border bg-background/80 backdrop-blur-sm p-2"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
@@ -314,6 +373,28 @@ supabase
           }}
         >
           <canvas ref={canvasRef} className="w-full" />
+          {selected && overlayPos && (
+            <Button
+              variant="destructive"
+              size="icon"
+              className="absolute z-20"
+              style={{ left: overlayPos.x, top: overlayPos.y }}
+              onClick={() => {
+                const obj = fabricCanvas?.getActiveObject() as any;
+                if (!obj || !obj.data?.id) return;
+                supabase.from('garden_items').delete().eq('id', obj.data.id);
+                fabricCanvas?.remove(obj);
+                objectsById.current.delete(obj.data.id);
+                fabricCanvas?.renderAll();
+                setSelected(null);
+                setOverlayPos(null);
+              }}
+              aria-label="Delete plant"
+              title="Delete plant"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
       <p className="text-center text-sm text-muted-foreground mt-2">
