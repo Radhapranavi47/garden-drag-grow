@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 
 import tulip from "@/assets/tulip.png";
-import fern from "@/assets/fern.png";
+
 
 type Plant = {
   id: string;
@@ -15,12 +15,13 @@ type Plant = {
 
 const USER_ROSE_URL = "/lovable-uploads/f9557315-7aa6-4306-b3db-4fbfe954efb6.png";
 const USER_SUNFLOWER_URL = "/lovable-uploads/df695081-6b6e-49f6-84af-0f48314f93f3.png";
+const USER_LAVENDER_URL = "/lovable-uploads/bd1258fe-88d5-41ca-9840-f6a625f25ffd.png";
 
 const PLANTS: Plant[] = [
   { id: "rose", name: "Rose", src: USER_ROSE_URL, alt: "User uploaded rose" },
   { id: "sunflower", name: "Sunflower", src: USER_SUNFLOWER_URL, alt: "User uploaded sunflower icon" },
   { id: "tulip", name: "Tulip", src: tulip, alt: "Pink tulip with green stem" },
-  { id: "fern", name: "Fern", src: fern, alt: "Lush green fern frond" },
+  { id: "lavender", name: "Lavender", src: USER_LAVENDER_URL, alt: "User uploaded lavender icon" },
 ];
 
 export const PlantPalette: FC<{ onClear?: () => void }>
