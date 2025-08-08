@@ -13,7 +13,10 @@ type Plant = {
   alt: string;
 };
 
+const USER_ROSE_URL = "/lovable-uploads/f9557315-7aa6-4306-b3db-4fbfe954efb6.png";
+
 const PLANTS: Plant[] = [
+  { id: "user-rose", name: "Your Rose", src: USER_ROSE_URL, alt: "User uploaded rose" },
   { id: "rose", name: "Rose", src: rose, alt: "Red rose flower with stem and leaves" },
   { id: "sunflower", name: "Sunflower", src: sunflower, alt: "Bright yellow sunflower head with leaves" },
   { id: "tulip", name: "Tulip", src: tulip, alt: "Pink tulip with green stem" },
