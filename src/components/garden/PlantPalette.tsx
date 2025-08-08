@@ -29,7 +29,7 @@ export const PlantPalette: FC<{ onAdd: (src: string, label?: string) => void; on
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3">
         {PLANTS.map((plant) => (
-          <div key={plant.id} className="group rounded-md border p-2 bg-card hover-scale">
+          <div key={plant.id} className="group rounded-md border p-2 bg-card hover-scale" draggable onDragStart={(e) => { e.dataTransfer.setData("application/json", JSON.stringify({ src: plant.src, label: plant.name })); e.dataTransfer.effectAllowed = "copy"; }} title="Drag into the garden canvas">
             <img
               src={plant.src}
               alt={`${plant.alt} icon`}

@@ -3,7 +3,7 @@ import { Canvas as FabricCanvas, Image as FabricImage } from "fabric";
 import { toast } from "sonner";
 
 export type GardenCanvasHandle = {
-  addPlant: (url: string, label?: string) => void;
+  addPlant: (url: string, label?: string, at?: { x: number; y: number }) => void;
   clear: () => void;
 };
 
@@ -23,7 +23,7 @@ const GardenCanvas = forwardRef<GardenCanvasHandle>(function GardenCanvas(_, ref
       width,
       height: CANVAS_HEIGHT,
       backgroundColor: "transparent",
-      selection: true,
+      selection: false,
       preserveObjectStacking: true,
     });
 
@@ -48,16 +48,18 @@ const GardenCanvas = forwardRef<GardenCanvasHandle>(function GardenCanvas(_, ref
 
   // Expose imperative methods
   useImperativeHandle(ref, () => ({
-    addPlant: (url: string, label?: string) => {
+    addPlant: (url: string, label?: string, at?: { x: number; y: number }) => {
       if (!fabricCanvas) return;
       FabricImage.fromURL(url).then((img) => {
         if (!img) return;
         // Scale to a reasonable size
         const targetWidth = 96; // px
         const scale = targetWidth / (img.width || targetWidth);
+        const left = at?.x ?? fabricCanvas.getWidth() / 2;
+        const top = at?.y ?? 120;
         (img as any).set({
-          left: fabricCanvas.getWidth() / 2,
-          top: 120,
+          left,
+          top,
           originX: "center",
           originY: "center",
           selectable: true,
@@ -84,6 +86,37 @@ const GardenCanvas = forwardRef<GardenCanvasHandle>(function GardenCanvas(_, ref
         <div
           ref={containerRef}
           className="rounded-md border bg-background/80 backdrop-blur-sm p-2"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            try {
+              const data = e.dataTransfer.getData("application/json");
+              if (!data) return;
+              const { src, label } = JSON.parse(data);
+              if (!src) return;
+              const rect = canvasRef.current?.getBoundingClientRect();
+              if (!rect || !fabricCanvas) return;
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              FabricImage.fromURL(src).then((img) => {
+                if (!img) return;
+                const targetWidth = 96; // px
+                const scale = targetWidth / (img.width || targetWidth);
+                (img as any).set({
+                  left: x,
+                  top: y,
+                  originX: "center",
+                  originY: "center",
+                  selectable: true,
+                  hoverCursor: "grab",
+                });
+                img.scale(scale);
+                fabricCanvas.add(img);
+                fabricCanvas.setActiveObject(img);
+                fabricCanvas.renderAll();
+              });
+            } catch {}
+          }}
         >
           <canvas ref={canvasRef} className="w-full" />
         </div>
