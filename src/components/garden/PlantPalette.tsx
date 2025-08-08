@@ -12,11 +12,13 @@ type Plant = {
 const USER_ROSE_URL = "/lovable-uploads/f9557315-7aa6-4306-b3db-4fbfe954efb6.png";
 const USER_SUNFLOWER_URL = "/lovable-uploads/df695081-6b6e-49f6-84af-0f48314f93f3.png";
 const USER_GRASS_URL = "/lovable-uploads/3710b8bb-987c-4323-a8d4-2c77b2a69d1e.png";
+const USER_LAVENDER_URL = "/lovable-uploads/816fb362-bda5-4456-83b4-27ecf2d0d071.png";
 
 const PLANTS: Plant[] = [
   { id: "rose", name: "Rose", src: USER_ROSE_URL, alt: "User uploaded rose" },
   { id: "sunflower", name: "Sunflower", src: USER_SUNFLOWER_URL, alt: "User uploaded sunflower icon" },
   { id: "grass", name: "Grass", src: USER_GRASS_URL, alt: "User uploaded grass" },
+  { id: "lavender", name: "Lavender", src: USER_LAVENDER_URL, alt: "User uploaded lavender flower" },
 ];
 
 export const PlantPalette: FC<{ onClear?: () => void }>
