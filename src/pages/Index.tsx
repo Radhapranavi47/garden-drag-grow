@@ -5,7 +5,7 @@ import { PlantPalette } from "@/components/garden/PlantPalette";
 import { Button } from "@/components/ui/button";
 import { NamePromptDialog } from "@/components/guest/NamePromptDialog";
 import { PlantCountsCard } from "@/components/garden/PlantCountsCard";
-
+import { supabase } from "@/integrations/supabase/client";
 const Index = () => {
   const gardenRef = useRef<GardenCanvasHandle>(null);
   const [guestName, setGuestName] = useState<string | null>(null);
@@ -38,7 +38,7 @@ const Index = () => {
     };
   }, []);
 
-  const handleClear = () => { gardenRef.current?.clear(); setCounts({}); };
+  const handleClear = async () => { await supabase.from("garden_items").delete().neq("id", "00000000-0000-0000-0000-000000000000"); gardenRef.current?.clear(); setCounts({}); };
   const handleAdded = (label?: string) => {
     const key = (label || "Plant").trim() || "Plant";
     setCounts((prev) => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
@@ -80,7 +80,7 @@ const Index = () => {
           </aside>
           <article className="lg:col-span-2 animate-scale-in relative">
             <PlantCountsCard total={totalCount} counts={counts} />
-            <GardenCanvas ref={gardenRef} onAdd={(label) => handleAdded(label)} />
+            <GardenCanvas ref={gardenRef} onAdd={(label) => handleAdded(label)} onInitialCounts={(c) => setCounts(c)} />
           </article>
         </section>
       </main>

@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      garden_items: {
+        Row: {
+          angle: number
+          created_at: string
+          created_by_name: string | null
+          id: string
+          label: string
+          scale: number
+          url: string
+          x: number
+          y: number
+        }
+        Insert: {
+          angle?: number
+          created_at?: string
+          created_by_name?: string | null
+          id?: string
+          label: string
+          scale?: number
+          url: string
+          x: number
+          y: number
+        }
+        Update: {
+          angle?: number
+          created_at?: string
+          created_by_name?: string | null
+          id?: string
+          label?: string
+          scale?: number
+          url?: string
+          x?: number
+          y?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

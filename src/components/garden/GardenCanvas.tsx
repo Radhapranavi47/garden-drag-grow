@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { Canvas as FabricCanvas, Image as FabricImage } from "fabric";
 import { toast } from "sonner";
-
+import { supabase } from "@/integrations/supabase/client";
 export type GardenCanvasHandle = {
   addPlant: (url: string, label?: string, at?: { x: number; y: number }) => void;
   clear: () => void;
@@ -45,13 +45,63 @@ function removeWhiteBackground(url: string): Promise<string> {
   });
 }
 
-type GardenCanvasProps = { onAdd?: (label?: string) => void };
+type GardenCanvasProps = { onAdd?: (label?: string) => void; onInitialCounts?: (counts: Record<string, number>) => void };
 
-const GardenCanvas = forwardRef<GardenCanvasHandle, GardenCanvasProps>(function GardenCanvas({ onAdd }, ref) {
+const GardenCanvas = forwardRef<GardenCanvasHandle, GardenCanvasProps>(function GardenCanvas({ onAdd, onInitialCounts }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
+const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
 
+// Track objects and realtime channel
+const objectsById = useRef<Map<string, any>>(new Map());
+const renderedIds = useRef<Set<string>>(new Set());
+const rtChannelRef = useRef<any>(null);
+
+// Helper to render a DB row onto the canvas
+const addRowToCanvas = async (row: any) => {
+  if (!fabricCanvas) return;
+  if (objectsById.current.has(row.id)) return;
+  try {
+    const dataUrl = await removeWhiteBackground(row.url);
+    const img = await FabricImage.fromURL(dataUrl);
+    if (!img) return;
+    (img as any).set({
+      left: row.x,
+      top: row.y,
+      originX: "center",
+      originY: "center",
+      selectable: true,
+      hasControls: false,
+      lockScalingX: true,
+      lockScalingY: true,
+      lockRotation: true,
+      hoverCursor: "grab",
+    });
+    (img as any).data = { id: row.id, label: row.label };
+    objectsById.current.set(row.id, img);
+    fabricCanvas.add(img);
+    fabricCanvas.renderAll();
+  } catch {
+    const img = await FabricImage.fromURL(row.url);
+    if (!img) return;
+    (img as any).set({
+      left: row.x,
+      top: row.y,
+      originX: "center",
+      originY: "center",
+      selectable: true,
+      hasControls: false,
+      lockScalingX: true,
+      lockScalingY: true,
+      lockRotation: true,
+      hoverCursor: "grab",
+    });
+    (img as any).data = { id: row.id, label: row.label };
+    objectsById.current.set(row.id, img);
+    fabricCanvas.add(img);
+    fabricCanvas.renderAll();
+  }
+};
   // Initialize Fabric canvas
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
@@ -84,65 +134,103 @@ const GardenCanvas = forwardRef<GardenCanvasHandle, GardenCanvasProps>(function 
     };
   }, []);
 
+// Load existing items and subscribe to realtime changes
+useEffect(() => {
+  if (!fabricCanvas) return;
+  let mounted = true;
+
+  const load = async () => {
+    const { data, error } = await supabase
+      .from('garden_items')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) {
+      console.error('Load garden_items error', error);
+      return;
+    }
+    if (!mounted) return;
+    const counts: Record<string, number> = {};
+    for (const row of data || []) {
+      await addRowToCanvas(row);
+      const key = (row.label || 'Plant').trim() || 'Plant';
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    try { onInitialCounts?.(counts); } catch {}
+  };
+
+  load();
+
+  const channel = supabase
+    .channel('public:garden_items')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'garden_items' }, async (payload) => {
+      const row = (payload as any).new;
+      if (renderedIds.current.has(row.id)) return;
+      await addRowToCanvas(row);
+      try { onAdd?.(row.label); } catch {}
+    })
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'garden_items' }, (payload) => {
+      const row = (payload as any).old;
+      const obj = objectsById.current.get(row.id);
+      if (obj && fabricCanvas) {
+        fabricCanvas.remove(obj);
+        objectsById.current.delete(row.id);
+        fabricCanvas.renderAll();
+        if (objectsById.current.size === 0) {
+          try { onInitialCounts?.({}); } catch {}
+        }
+      }
+    })
+    .subscribe();
+
+  rtChannelRef.current = channel;
+
+  return () => {
+    mounted = false;
+    if (rtChannelRef.current) {
+      supabase.removeChannel(rtChannelRef.current);
+      rtChannelRef.current = null;
+    }
+  };
+}, [fabricCanvas, onAdd, onInitialCounts]);
+
   // Expose imperative methods
   useImperativeHandle(ref, () => ({
-    addPlant: (url: string, label?: string, at?: { x: number; y: number }) => {
-      if (!fabricCanvas) return;
-removeWhiteBackground(url)
-        .then((dataUrl) => FabricImage.fromURL(dataUrl))
-        .then((img) => {
-          if (!img) return;
-          const left = at?.x ?? fabricCanvas.getWidth() / 2;
-          const top = at?.y ?? 120;
-          (img as any).set({
-            left,
-            top,
-            originX: "center",
-            originY: "center",
-            selectable: true,
-            hasControls: false,
-            lockScalingX: true,
-            lockScalingY: true,
-            lockRotation: true,
-            hoverCursor: "grab",
-          });
-          fabricCanvas.add(img);
-          fabricCanvas.setActiveObject(img);
-          fabricCanvas.renderAll();
-          try { onAdd?.(label); } catch {}
-        })
-        .catch(() => {
-          // Fallback: add original image if processing fails
-          FabricImage.fromURL(url).then((img) => {
-            if (!img) return;
-            const left = at?.x ?? fabricCanvas.getWidth() / 2;
-            const top = at?.y ?? 120;
-            (img as any).set({
-              left,
-              top,
-              originX: "center",
-              originY: "center",
-              selectable: true,
-              hasControls: false,
-              lockScalingX: true,
-              lockScalingY: true,
-              lockRotation: true,
-              hoverCursor: "grab",
-            });
-            fabricCanvas.add(img);
-            fabricCanvas.setActiveObject(img);
-            fabricCanvas.renderAll();
-            try { onAdd?.(label); } catch {}
-          });
-        });
-    },
-    clear: () => {
-      if (!fabricCanvas) return;
-      fabricCanvas.clear();
-      fabricCanvas.backgroundColor = "transparent";
-      fabricCanvas.renderAll();
-      toast("Garden cleared");
-    },
+addPlant: (url: string, label?: string, at?: { x: number; y: number }) => {
+  if (!fabricCanvas) return;
+  const left = at?.x ?? fabricCanvas.getWidth() / 2;
+  const top = at?.y ?? 120;
+  // Insert into shared table; realtime will broadcast to everyone
+  supabase
+    .from('garden_items')
+    .insert({
+      label: label || 'Plant',
+      url,
+      x: left,
+      y: top,
+      scale: 1,
+      angle: 0,
+    })
+    .select()
+    .single()
+    .then(async ({ data, error }) => {
+      if (error || !data) {
+        toast("Couldn't add plant, please try again");
+        return;
+      }
+      renderedIds.current.add(data.id);
+      await addRowToCanvas(data);
+      try { onAdd?.(label); } catch {}
+    });
+},
+clear: () => {
+  if (!fabricCanvas) return;
+  objectsById.current.clear();
+  renderedIds.current.clear();
+  fabricCanvas.clear();
+  fabricCanvas.backgroundColor = "transparent";
+  fabricCanvas.renderAll();
+  toast("Garden cleared");
+},
   }), [fabricCanvas]);
 
   return (
@@ -163,48 +251,21 @@ removeWhiteBackground(url)
               if (!rect || !fabricCanvas) return;
               const x = e.clientX - rect.left;
               const y = e.clientY - rect.top;
-removeWhiteBackground(src)
-               .then((dataUrl) => FabricImage.fromURL(dataUrl))
-               .then((img) => {
-                 if (!img) return;
-                 (img as any).set({
-                   left: x,
-                   top: y,
-                   originX: "center",
-                   originY: "center",
-                   selectable: true,
-                   hasControls: false,
-                   lockScalingX: true,
-                   lockScalingY: true,
-                   lockRotation: true,
-                   hoverCursor: "grab",
-                 });
-                  fabricCanvas.add(img);
-                  fabricCanvas.setActiveObject(img);
-                  fabricCanvas.renderAll();
-                  try { onAdd?.(label); } catch {}
-                })
-               .catch(() => {
-                 FabricImage.fromURL(src).then((img) => {
-                   if (!img) return;
-                    (img as any).set({
-                      left: x,
-                      top: y,
-                      originX: "center",
-                      originY: "center",
-                      selectable: true,
-                      hasControls: false,
-                      lockScalingX: true,
-                      lockScalingY: true,
-                      lockRotation: true,
-                      hoverCursor: "grab",
-                    });
-                    fabricCanvas.add(img);
-                    fabricCanvas.setActiveObject(img);
-                    fabricCanvas.renderAll();
-                    try { onAdd?.(label); } catch {}
-                  });
-               });
+// Insert into DB; realtime will render across all clients
+supabase
+  .from('garden_items')
+  .insert({ label: label || 'Plant', url: src, x, y, scale: 1, angle: 0 })
+  .select()
+  .single()
+  .then(async ({ data, error }) => {
+    if (error || !data) {
+      toast("Couldn't add plant, please try again");
+      return;
+    }
+    renderedIds.current.add(data.id);
+    await addRowToCanvas(data);
+    try { onAdd?.(label); } catch {}
+  });
             } catch {}
           }}
         >
