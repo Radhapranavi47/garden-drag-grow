@@ -39,9 +39,9 @@ const Index = () => {
   }, []);
 
   const handleClear = () => { gardenRef.current?.clear(); setCounts({}); };
-  const handleAdded = () => {
-    const n = (guestName || "Guest").trim() || "Guest";
-    setCounts((prev) => ({ ...prev, [n]: (prev[n] || 0) + 1 }));
+  const handleAdded = (label?: string) => {
+    const key = (label || "Plant").trim() || "Plant";
+    setCounts((prev) => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
   };
 
   return (
@@ -80,7 +80,7 @@ const Index = () => {
           </aside>
           <article className="lg:col-span-2 animate-scale-in relative">
             <PlantCountsCard total={totalCount} counts={counts} />
-            <GardenCanvas ref={gardenRef} onAdd={() => handleAdded()} />
+            <GardenCanvas ref={gardenRef} onAdd={(label) => handleAdded(label)} />
           </article>
         </section>
       </main>

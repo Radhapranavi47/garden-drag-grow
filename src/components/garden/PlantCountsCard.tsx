@@ -12,7 +12,7 @@ export const PlantCountsCard: FC<{ total: number; counts: Counts }>
     <div className="absolute top-2 right-2 z-20">
       <Popover>
         <PopoverTrigger asChild>
-          <button aria-label="Show planters and counts" className="focus:outline-none">
+          <button aria-label="Show plants and counts" className="focus:outline-none">
             <Card className="px-4 py-2 shadow-md">
               <div className="text-sm font-medium">Total plants</div>
               <div className="text-2xl font-bold leading-tight">{total}</div>
@@ -20,7 +20,7 @@ export const PlantCountsCard: FC<{ total: number; counts: Counts }>
           </button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-64">
-          <div className="mb-2 font-medium">Planters</div>
+          <div className="mb-2 font-medium">Plants</div>
           {items.length === 0 ? (
             <p className="text-sm text-muted-foreground">No plants yet.</p>
           ) : (
