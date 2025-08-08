@@ -7,9 +7,6 @@ import { Button } from "@/components/ui/button";
 const Index = () => {
   const gardenRef = useRef<GardenCanvasHandle>(null);
 
-  const handleAdd = (src: string, label?: string) => {
-    gardenRef.current?.addPlant(src, label);
-  };
 
   const handleClear = () => gardenRef.current?.clear();
 
@@ -40,7 +37,7 @@ const Index = () => {
       <main id="garden" className="container mx-auto px-4 py-10 md:py-14">
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <aside className="lg:col-span-1 animate-fade-in">
-            <PlantPalette onAdd={handleAdd} onClear={handleClear} />
+            <PlantPalette onClear={handleClear} />
           </aside>
           <article className="lg:col-span-2 animate-scale-in">
             <GardenCanvas ref={gardenRef} />

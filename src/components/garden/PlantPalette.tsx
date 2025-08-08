@@ -20,8 +20,8 @@ const PLANTS: Plant[] = [
   { id: "fern", name: "Fern", src: fern, alt: "Lush green fern frond" },
 ];
 
-export const PlantPalette: FC<{ onAdd: (src: string, label?: string) => void; onClear?: () => void }>
-  = ({ onAdd, onClear }) => {
+export const PlantPalette: FC<{ onClear?: () => void }>
+  = ({ onClear }) => {
   return (
     <Card className="shadow-md">
       <CardHeader>
@@ -36,11 +36,8 @@ export const PlantPalette: FC<{ onAdd: (src: string, label?: string) => void; on
               loading="lazy"
               className="mx-auto h-20 w-20 object-contain"
             />
-            <div className="mt-2 flex items-center justify-between">
+            <div className="mt-2 flex items-center justify-center">
               <span className="text-sm">{plant.name}</span>
-              <Button size="sm" onClick={() => onAdd(plant.src, plant.name)} aria-label={`Add ${plant.name}`}>
-                Add
-              </Button>
             </div>
           </div>
         ))}
