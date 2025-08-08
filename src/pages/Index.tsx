@@ -1,23 +1,46 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import GardenCanvas, { GardenCanvasHandle } from "@/components/garden/GardenCanvas";
 import { PlantPalette } from "@/components/garden/PlantPalette";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { NamePromptDialog } from "@/components/guest/NamePromptDialog";
 
 const Index = () => {
   const gardenRef = useRef<GardenCanvasHandle>(null);
-  const { user } = useSupabaseAuth();
-  const isAdmin = user?.email?.toLowerCase() === "radhapranavi74@gmail.com";
+  const [guestName, setGuestName] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const readName = () => {
+      try {
+        setGuestName(localStorage.getItem("garden_guest_name"));
+      } catch {}
+    };
+    readName();
+
+    const onName = () => readName();
+    window.addEventListener("guest-name-updated", onName as unknown as EventListener);
+
+    const updateAdmin = () => {
+      try {
+        setIsAdmin(window.location.hash.toLowerCase().includes("admin"));
+      } catch {}
+    };
+    updateAdmin();
+    window.addEventListener("hashchange", updateAdmin);
+
+    return () => {
+      window.removeEventListener("guest-name-updated", onName as unknown as EventListener);
+      window.removeEventListener("hashchange", updateAdmin);
+    };
+  }, []);
 
   const handleClear = () => gardenRef.current?.clear();
 
   return (
     <>
       <Helmet>
-        <title>Community Garden — Design Your Garden</title>
+        <title>Welcome to Pranu's Garden — Design Your Garden</title>
         <meta name="description" content="Community Garden planner: pick flowers and plants, drag and drop them anywhere, and create your dream garden layout." />
         <link rel="canonical" href="/" />
       </Helmet>
@@ -25,16 +48,20 @@ const Index = () => {
       <header className="hero-gradient">
         <div className="container mx-auto px-4 py-16 md:py-24">
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-center">
-            Community Garden Planner
+            Welcome to Pranu's Garden
           </h1>
           <p className="mt-4 md:mt-6 text-center text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
             Select your favorite flowers and plants, then drag and drop them anywhere inside your garden. Add as many as you want.
           </p>
+          {guestName && (
+            <p className="mt-2 text-center text-sm text-muted-foreground">
+              Planting as {guestName}
+            </p>
+          )}
           <div className="mt-8 flex flex-col items-center gap-3">
             <a href="#garden" className="story-link">
               <Button size="lg">Start Planting</Button>
             </a>
-            <Link to="/auth" className="underline text-sm">Log in / Sign up</Link>
           </div>
         </div>
       </header>

@@ -18,6 +18,7 @@ export function NamePromptDialog() {
     const trimmed = name.trim();
     if (trimmed.length > 0) {
       localStorage.setItem(STORAGE_KEY, trimmed);
+      window.dispatchEvent(new Event("guest-name-updated"));
     }
     setOpen(false);
   };
@@ -39,7 +40,7 @@ export function NamePromptDialog() {
           aria-label="Your name"
         />
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="secondary" onClick={() => setOpen(false)}>Skip</Button>
+          <Button variant="secondary" onClick={() => { setOpen(false); window.dispatchEvent(new Event("guest-name-updated")); }}>Skip</Button>
           <Button onClick={save}>Save</Button>
         </DialogFooter>
       </DialogContent>
