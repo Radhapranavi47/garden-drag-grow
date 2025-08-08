@@ -2,8 +2,6 @@ import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "re
 import { Canvas as FabricCanvas, Image as FabricImage } from "fabric";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 export type GardenCanvasHandle = {
   addPlant: (url: string, label?: string, at?: { x: number; y: number }) => void;
   clear: () => void;
@@ -53,8 +51,6 @@ const GardenCanvas = forwardRef<GardenCanvasHandle, GardenCanvasProps>(function 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
-const [selected, setSelected] = useState<{ id: string; label?: string } | null>(null);
-const [overlayPos, setOverlayPos] = useState<{ x: number; y: number } | null>(null);
 
 // Track objects and realtime channel
 const objectsById = useRef<Map<string, any>>(new Map());
@@ -234,35 +230,6 @@ useEffect(() => {
         .eq('id', obj.data.id);
     };
 
-    const updateOverlayFor = (obj: any) => {
-      if (!obj) return;
-      const left = obj.left ?? 0;
-      const top = obj.top ?? 0;
-      const w = typeof obj.getScaledWidth === 'function' ? obj.getScaledWidth() : (obj.width || 0);
-      const h = typeof obj.getScaledHeight === 'function' ? obj.getScaledHeight() : (obj.height || 0);
-      setOverlayPos({ x: left + w / 2 + 6, y: top - h / 2 - 6 });
-    };
-
-    const onSelectionChange = () => {
-      const obj = fabricCanvas.getActiveObject() as any;
-      if (obj && obj.data?.id) {
-        setSelected({ id: obj.data.id, label: obj.data.label });
-        updateOverlayFor(obj);
-      }
-    };
-
-    const onSelectionCleared = () => {
-      setSelected(null);
-      setOverlayPos(null);
-    };
-
-    const onObjectMoving = (e: any) => {
-      const obj = e.target as any;
-      if (obj && selected?.id === obj.data?.id) {
-        updateOverlayFor(obj);
-      }
-    };
-
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Delete' && e.key !== 'Backspace') return;
       const obj = fabricCanvas.getActiveObject() as any;
@@ -273,28 +240,16 @@ useEffect(() => {
       fabricCanvas.remove(obj);
       objectsById.current.delete(obj.data.id);
       fabricCanvas.renderAll();
-      setSelected(null);
-      setOverlayPos(null);
     };
 
     fabricCanvas.on('object:modified', onModified);
-    fabricCanvas.on('selection:created', onSelectionChange);
-    fabricCanvas.on('selection:updated', onSelectionChange);
-    fabricCanvas.on('selection:cleared', onSelectionCleared);
-    fabricCanvas.on('object:moving', onObjectMoving);
-    fabricCanvas.on('object:rotating', onObjectMoving);
     window.addEventListener('keydown', onKeyDown);
 
     return () => {
       fabricCanvas.off('object:modified', onModified);
-      fabricCanvas.off('selection:created', onSelectionChange);
-      fabricCanvas.off('selection:updated', onSelectionChange);
-      fabricCanvas.off('selection:cleared', onSelectionCleared);
-      fabricCanvas.off('object:moving', onObjectMoving);
-      fabricCanvas.off('object:rotating', onObjectMoving);
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [fabricCanvas, selected?.id]);
+  }, [fabricCanvas]);
 
   // Expose imperative methods
   useImperativeHandle(ref, () => ({
@@ -341,7 +296,7 @@ clear: () => {
       <div className="hero-gradient rounded-md p-3">
         <div
           ref={containerRef}
-          className="relative rounded-md border bg-background/80 backdrop-blur-sm p-2"
+          className="rounded-md border bg-background/80 backdrop-blur-sm p-2"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
@@ -373,28 +328,6 @@ supabase
           }}
         >
           <canvas ref={canvasRef} className="w-full" />
-          {selected && overlayPos && (
-            <Button
-              variant="destructive"
-              size="icon"
-              className="absolute z-20"
-              style={{ left: overlayPos.x, top: overlayPos.y }}
-              onClick={() => {
-                const obj = fabricCanvas?.getActiveObject() as any;
-                if (!obj || !obj.data?.id) return;
-                supabase.from('garden_items').delete().eq('id', obj.data.id);
-                fabricCanvas?.remove(obj);
-                objectsById.current.delete(obj.data.id);
-                fabricCanvas?.renderAll();
-                setSelected(null);
-                setOverlayPos(null);
-              }}
-              aria-label="Delete plant"
-              title="Delete plant"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       </div>
       <p className="text-center text-sm text-muted-foreground mt-2">
