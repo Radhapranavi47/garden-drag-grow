@@ -4,11 +4,14 @@ import GardenCanvas, { GardenCanvasHandle } from "@/components/garden/GardenCanv
 import { PlantPalette } from "@/components/garden/PlantPalette";
 import { Button } from "@/components/ui/button";
 import { NamePromptDialog } from "@/components/guest/NamePromptDialog";
+import { PlantCountsCard } from "@/components/garden/PlantCountsCard";
 
 const Index = () => {
   const gardenRef = useRef<GardenCanvasHandle>(null);
   const [guestName, setGuestName] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const totalCount = Object.values(counts).reduce((a, b) => a + b, 0);
 
   useEffect(() => {
     const readName = () => {
@@ -35,7 +38,11 @@ const Index = () => {
     };
   }, []);
 
-  const handleClear = () => gardenRef.current?.clear();
+  const handleClear = () => { gardenRef.current?.clear(); setCounts({}); };
+  const handleAdded = () => {
+    const n = (guestName || "Guest").trim() || "Guest";
+    setCounts((prev) => ({ ...prev, [n]: (prev[n] || 0) + 1 }));
+  };
 
   return (
     <>
@@ -71,8 +78,9 @@ const Index = () => {
           <aside className="lg:col-span-1 animate-fade-in">
             <PlantPalette onClear={isAdmin ? handleClear : undefined} />
           </aside>
-          <article className="lg:col-span-2 animate-scale-in">
-            <GardenCanvas ref={gardenRef} />
+          <article className="lg:col-span-2 animate-scale-in relative">
+            <PlantCountsCard total={totalCount} counts={counts} />
+            <GardenCanvas ref={gardenRef} onAdd={() => handleAdded()} />
           </article>
         </section>
       </main>

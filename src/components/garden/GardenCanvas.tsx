@@ -45,7 +45,9 @@ function removeWhiteBackground(url: string): Promise<string> {
   });
 }
 
-const GardenCanvas = forwardRef<GardenCanvasHandle>(function GardenCanvas(_, ref) {
+type GardenCanvasProps = { onAdd?: (label?: string) => void };
+
+const GardenCanvas = forwardRef<GardenCanvasHandle, GardenCanvasProps>(function GardenCanvas({ onAdd }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
@@ -107,6 +109,7 @@ removeWhiteBackground(url)
           fabricCanvas.add(img);
           fabricCanvas.setActiveObject(img);
           fabricCanvas.renderAll();
+          try { onAdd?.(label); } catch {}
         })
         .catch(() => {
           // Fallback: add original image if processing fails
@@ -129,6 +132,7 @@ removeWhiteBackground(url)
             fabricCanvas.add(img);
             fabricCanvas.setActiveObject(img);
             fabricCanvas.renderAll();
+            try { onAdd?.(label); } catch {}
           });
         });
     },
@@ -175,10 +179,11 @@ removeWhiteBackground(src)
                    lockRotation: true,
                    hoverCursor: "grab",
                  });
-                 fabricCanvas.add(img);
-                 fabricCanvas.setActiveObject(img);
-                 fabricCanvas.renderAll();
-               })
+                  fabricCanvas.add(img);
+                  fabricCanvas.setActiveObject(img);
+                  fabricCanvas.renderAll();
+                  try { onAdd?.(label); } catch {}
+                })
                .catch(() => {
                  FabricImage.fromURL(src).then((img) => {
                    if (!img) return;
@@ -197,7 +202,8 @@ removeWhiteBackground(src)
                     fabricCanvas.add(img);
                     fabricCanvas.setActiveObject(img);
                     fabricCanvas.renderAll();
-                 });
+                    try { onAdd?.(label); } catch {}
+                  });
                });
             } catch {}
           }}
