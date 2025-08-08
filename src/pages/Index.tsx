@@ -43,7 +43,17 @@ const Index = () => {
     const key = (label || "Plant").trim() || "Plant";
     setCounts((prev) => ({ ...prev, [key]: (prev[key] || 0) + 1 }));
   };
-
+  const handleRemoved = (label?: string) => {
+    const key = (label || "Plant").trim() || "Plant";
+    setCounts((prev) => {
+      const next = { ...prev };
+      if (next[key]) {
+        next[key] = next[key] - 1;
+        if (next[key] <= 0) delete next[key];
+      }
+      return next;
+    });
+  };
   return (
     <>
       <Helmet>
@@ -80,7 +90,7 @@ const Index = () => {
           </aside>
           <article className="lg:col-span-2 animate-scale-in relative">
             <PlantCountsCard total={totalCount} counts={counts} />
-            <GardenCanvas ref={gardenRef} onAdd={(label) => handleAdded(label)} onInitialCounts={(c) => setCounts(c)} />
+            <GardenCanvas ref={gardenRef} onAdd={(label) => handleAdded(label)} onInitialCounts={(c) => setCounts(c)} onRemove={(label) => handleRemoved(label)} />
           </article>
         </section>
       </main>

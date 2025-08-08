@@ -45,9 +45,9 @@ function removeWhiteBackground(url: string): Promise<string> {
   });
 }
 
-type GardenCanvasProps = { onAdd?: (label?: string) => void; onInitialCounts?: (counts: Record<string, number>) => void };
+type GardenCanvasProps = { onAdd?: (label?: string) => void; onInitialCounts?: (counts: Record<string, number>) => void; onRemove?: (label?: string) => void };
 
-const GardenCanvas = forwardRef<GardenCanvasHandle, GardenCanvasProps>(function GardenCanvas({ onAdd, onInitialCounts }, ref) {
+const GardenCanvas = forwardRef<GardenCanvasHandle, GardenCanvasProps>(function GardenCanvas({ onAdd, onInitialCounts, onRemove }, ref) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
@@ -71,11 +71,11 @@ const addRowToCanvas = async (row: any) => {
       originX: "center",
       originY: "center",
       selectable: true,
-      hasControls: false,
+      hasControls: true,
       lockScalingX: true,
       lockScalingY: true,
-      lockRotation: true,
-      hoverCursor: "grab",
+      lockRotation: false,
+      hoverCursor: "move",
     });
     (img as any).data = { id: row.id, label: row.label };
     objectsById.current.set(row.id, img);
@@ -90,11 +90,11 @@ const addRowToCanvas = async (row: any) => {
       originX: "center",
       originY: "center",
       selectable: true,
-      hasControls: false,
+      hasControls: true,
       lockScalingX: true,
       lockScalingY: true,
-      lockRotation: true,
-      hoverCursor: "grab",
+      lockRotation: false,
+      hoverCursor: "move",
     });
     (img as any).data = { id: row.id, label: row.label };
     objectsById.current.set(row.id, img);
@@ -168,6 +168,14 @@ useEffect(() => {
       await addRowToCanvas(row);
       try { onAdd?.(row.label); } catch {}
     })
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'garden_items' }, (payload) => {
+      const row = (payload as any).new;
+      const obj = objectsById.current.get(row.id);
+      if (obj && fabricCanvas) {
+        (obj as any).set({ left: row.x, top: row.y, angle: row.angle || 0 });
+        fabricCanvas.renderAll();
+      }
+    })
     .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'garden_items' }, (payload) => {
       const row = (payload as any).old;
       const obj = objectsById.current.get(row.id);
@@ -175,6 +183,7 @@ useEffect(() => {
         fabricCanvas.remove(obj);
         objectsById.current.delete(row.id);
         fabricCanvas.renderAll();
+        try { onRemove?.(row.label); } catch {}
         if (objectsById.current.size === 0) {
           try { onInitialCounts?.({}); } catch {}
         }
@@ -192,6 +201,41 @@ useEffect(() => {
     }
   };
 }, [fabricCanvas, onAdd, onInitialCounts]);
+
+  // Sync moves/rotations to DB and handle Delete key
+  useEffect(() => {
+    if (!fabricCanvas) return;
+
+    const onModified = (e: any) => {
+      const obj = e.target as any;
+      if (!obj || !obj.data?.id) return;
+      const { left, top, angle } = obj;
+      supabase
+        .from('garden_items')
+        .update({ x: left, y: top, angle: angle || 0 })
+        .eq('id', obj.data.id);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const obj = fabricCanvas.getActiveObject() as any;
+      if (!obj || !obj.data?.id) return;
+      e.preventDefault();
+      // Optimistic removal; realtime will broadcast DELETE
+      supabase.from('garden_items').delete().eq('id', obj.data.id);
+      fabricCanvas.remove(obj);
+      objectsById.current.delete(obj.data.id);
+      fabricCanvas.renderAll();
+    };
+
+    fabricCanvas.on('object:modified', onModified);
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      fabricCanvas.off('object:modified', onModified);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [fabricCanvas]);
 
   // Expose imperative methods
   useImperativeHandle(ref, () => ({
