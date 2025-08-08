@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import rose from "@/assets/rose.png";
+
 import sunflower from "@/assets/sunflower.png";
 import tulip from "@/assets/tulip.png";
 import fern from "@/assets/fern.png";
@@ -16,8 +16,7 @@ type Plant = {
 const USER_ROSE_URL = "/lovable-uploads/f9557315-7aa6-4306-b3db-4fbfe954efb6.png";
 
 const PLANTS: Plant[] = [
-  { id: "user-rose", name: "Your Rose", src: USER_ROSE_URL, alt: "User uploaded rose" },
-  { id: "rose", name: "Rose", src: rose, alt: "Red rose flower with stem and leaves" },
+  { id: "rose", name: "Rose", src: USER_ROSE_URL, alt: "User uploaded rose" },
   { id: "sunflower", name: "Sunflower", src: sunflower, alt: "Bright yellow sunflower head with leaves" },
   { id: "tulip", name: "Tulip", src: tulip, alt: "Pink tulip with green stem" },
   { id: "fern", name: "Fern", src: fern, alt: "Lush green fern frond" },

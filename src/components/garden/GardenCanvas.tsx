@@ -90,9 +90,6 @@ removeWhiteBackground(url)
         .then((dataUrl) => FabricImage.fromURL(dataUrl))
         .then((img) => {
           if (!img) return;
-          // Scale to a reasonable size
-          const targetWidth = 96; // px
-          const scale = targetWidth / (img.width || targetWidth);
           const left = at?.x ?? fabricCanvas.getWidth() / 2;
           const top = at?.y ?? 120;
           (img as any).set({
@@ -101,9 +98,12 @@ removeWhiteBackground(url)
             originX: "center",
             originY: "center",
             selectable: true,
+            hasControls: false,
+            lockScalingX: true,
+            lockScalingY: true,
+            lockRotation: true,
             hoverCursor: "grab",
           });
-          img.scale(scale);
           fabricCanvas.add(img);
           fabricCanvas.setActiveObject(img);
           fabricCanvas.renderAll();
@@ -112,8 +112,6 @@ removeWhiteBackground(url)
           // Fallback: add original image if processing fails
           FabricImage.fromURL(url).then((img) => {
             if (!img) return;
-            const targetWidth = 96; // px
-            const scale = targetWidth / (img.width || targetWidth);
             const left = at?.x ?? fabricCanvas.getWidth() / 2;
             const top = at?.y ?? 120;
             (img as any).set({
@@ -122,9 +120,12 @@ removeWhiteBackground(url)
               originX: "center",
               originY: "center",
               selectable: true,
+              hasControls: false,
+              lockScalingX: true,
+              lockScalingY: true,
+              lockRotation: true,
               hoverCursor: "grab",
             });
-            img.scale(scale);
             fabricCanvas.add(img);
             fabricCanvas.setActiveObject(img);
             fabricCanvas.renderAll();
@@ -162,17 +163,18 @@ removeWhiteBackground(src)
                .then((dataUrl) => FabricImage.fromURL(dataUrl))
                .then((img) => {
                  if (!img) return;
-                 const targetWidth = 96; // px
-                 const scale = targetWidth / (img.width || targetWidth);
                  (img as any).set({
                    left: x,
                    top: y,
                    originX: "center",
                    originY: "center",
                    selectable: true,
+                   hasControls: false,
+                   lockScalingX: true,
+                   lockScalingY: true,
+                   lockRotation: true,
                    hoverCursor: "grab",
                  });
-                 img.scale(scale);
                  fabricCanvas.add(img);
                  fabricCanvas.setActiveObject(img);
                  fabricCanvas.renderAll();
@@ -180,20 +182,21 @@ removeWhiteBackground(src)
                .catch(() => {
                  FabricImage.fromURL(src).then((img) => {
                    if (!img) return;
-                   const targetWidth = 96; // px
-                   const scale = targetWidth / (img.width || targetWidth);
-                   (img as any).set({
-                     left: x,
-                     top: y,
-                     originX: "center",
-                     originY: "center",
-                     selectable: true,
-                     hoverCursor: "grab",
-                   });
-                   img.scale(scale);
-                   fabricCanvas.add(img);
-                   fabricCanvas.setActiveObject(img);
-                   fabricCanvas.renderAll();
+                    (img as any).set({
+                      left: x,
+                      top: y,
+                      originX: "center",
+                      originY: "center",
+                      selectable: true,
+                      hasControls: false,
+                      lockScalingX: true,
+                      lockScalingY: true,
+                      lockRotation: true,
+                      hoverCursor: "grab",
+                    });
+                    fabricCanvas.add(img);
+                    fabricCanvas.setActiveObject(img);
+                    fabricCanvas.renderAll();
                  });
                });
             } catch {}
@@ -203,7 +206,7 @@ removeWhiteBackground(src)
         </div>
       </div>
       <p className="text-center text-sm text-muted-foreground mt-2">
-        Tip: drag plants anywhere. Use handles to rotate/resize. Add as many as you like!
+        Tip: drag plants anywhere. Move only the flower—no resizing. Add as many as you like!
       </p>
     </div>
   );
