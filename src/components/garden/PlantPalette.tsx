@@ -2,7 +2,7 @@ import { FC } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-import sunflower from "@/assets/sunflower.png";
+
 import tulip from "@/assets/tulip.png";
 import fern from "@/assets/fern.png";
 
@@ -14,10 +14,11 @@ type Plant = {
 };
 
 const USER_ROSE_URL = "/lovable-uploads/f9557315-7aa6-4306-b3db-4fbfe954efb6.png";
+const USER_SUNFLOWER_URL = "/lovable-uploads/df695081-6b6e-49f6-84af-0f48314f93f3.png";
 
 const PLANTS: Plant[] = [
   { id: "rose", name: "Rose", src: USER_ROSE_URL, alt: "User uploaded rose" },
-  { id: "sunflower", name: "Sunflower", src: sunflower, alt: "Bright yellow sunflower head with leaves" },
+  { id: "sunflower", name: "Sunflower", src: USER_SUNFLOWER_URL, alt: "User uploaded sunflower icon" },
   { id: "tulip", name: "Tulip", src: tulip, alt: "Pink tulip with green stem" },
   { id: "fern", name: "Fern", src: fern, alt: "Lush green fern frond" },
 ];
