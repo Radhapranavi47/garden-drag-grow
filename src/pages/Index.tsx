@@ -3,10 +3,14 @@ import { Helmet } from "react-helmet-async";
 import GardenCanvas, { GardenCanvasHandle } from "@/components/garden/GardenCanvas";
 import { PlantPalette } from "@/components/garden/PlantPalette";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { NamePromptDialog } from "@/components/guest/NamePromptDialog";
 
 const Index = () => {
   const gardenRef = useRef<GardenCanvasHandle>(null);
-
+  const { user } = useSupabaseAuth();
+  const isAdmin = user?.email?.toLowerCase() === "radhapranavi74@gmail.com";
 
   const handleClear = () => gardenRef.current?.clear();
 
@@ -26,10 +30,11 @@ const Index = () => {
           <p className="mt-4 md:mt-6 text-center text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
             Select your favorite flowers and plants, then drag and drop them anywhere inside your garden. Add as many as you want.
           </p>
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex flex-col items-center gap-3">
             <a href="#garden" className="story-link">
               <Button size="lg">Start Planting</Button>
             </a>
+            <Link to="/auth" className="underline text-sm">Log in / Sign up</Link>
           </div>
         </div>
       </header>
@@ -37,13 +42,14 @@ const Index = () => {
       <main id="garden" className="container mx-auto px-4 py-10 md:py-14">
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <aside className="lg:col-span-1 animate-fade-in">
-            <PlantPalette onClear={handleClear} />
+            <PlantPalette onClear={isAdmin ? handleClear : undefined} />
           </aside>
           <article className="lg:col-span-2 animate-scale-in">
             <GardenCanvas ref={gardenRef} />
           </article>
         </section>
       </main>
+      <NamePromptDialog />
     </>
   );
 };
