@@ -331,7 +331,7 @@ supabase
         </div>
       </div>
       <p className="text-center text-sm text-muted-foreground mt-2">
-        Tip: drag plants anywhere. Move only the flower—no resizing. Add as many as you like!
+        Tip: drag plants anywhere. Add as many as you like!
       </p>
     </div>
   );
